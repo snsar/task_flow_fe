@@ -41,7 +41,10 @@ export const register = async (userData) => {
 export const logout = async () => {
   try {
     // Đảm bảo gửi token trong header để xác thực
-    await apiClient.post('/auth/logout')
+    const token = localStorage.getItem('token')
+    if (token) {
+      await apiClient.post('/auth/logout')
+    }
   } catch (error) {
     console.error('Logout error:', error)
   } finally {
@@ -50,6 +53,9 @@ export const logout = async () => {
     // Remove the Authorization header
     delete apiClient.defaults.headers.common['Authorization']
   }
+
+  // Return a resolved promise to ensure the chain continues
+  return Promise.resolve()
 }
 
 export const refreshToken = async () => {

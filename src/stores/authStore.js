@@ -8,8 +8,10 @@ export const useAuthStore = defineStore('auth', () => {
   const error = ref(null)
 
   const isAuthenticated = computed(() => !!localStorage.getItem('token'))
-  const isAdmin = computed(() => user.value?.roles?.some(role => role.slug === 'admin') || false)
-  const isManager = computed(() => user.value?.roles?.some(role => role.slug === 'project-manager') || false)
+  const isAdmin = computed(() => user.value?.roles?.some((role) => role.slug === 'admin') || false)
+  const isManager = computed(
+    () => user.value?.roles?.some((role) => role.slug === 'project-manager') || false,
+  )
 
   const loginUser = async (credentials) => {
     loading.value = true
@@ -47,8 +49,12 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       await logout()
       user.value = null
+      // Make sure we clear any cached state
+      localStorage.removeItem('token')
+      delete apiClient.defaults.headers.common['Authorization']
     } catch (err) {
       error.value = err.response?.data?.message || 'Đăng xuất thất bại'
+      console.error('Logout error:', err)
     } finally {
       loading.value = false
     }
@@ -56,7 +62,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const fetchCurrentUser = async () => {
     if (!isAuthenticated.value) return null
-    
+
     loading.value = true
     error.value = null
     try {
@@ -81,6 +87,6 @@ export const useAuthStore = defineStore('auth', () => {
     loginUser,
     registerUser,
     logoutUser,
-    fetchCurrentUser
+    fetchCurrentUser,
   }
 })

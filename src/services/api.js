@@ -30,14 +30,19 @@ apiClient.interceptors.response.use(
     console.error('API Error:', error.response?.data || error.message)
 
     // Handle authentication errors
-    if (error.response && error.response.status === 401) {
-      console.error('Authentication error - clearing token')
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      console.error(`Authentication error (${error.response.status}) - clearing token`)
+
+      // Clear authentication data
       localStorage.removeItem('token')
       delete apiClient.defaults.headers.common['Authorization']
 
       // Redirect to login page if we're in a browser environment
+      // Use a small delay to allow any current operations to complete
       if (typeof window !== 'undefined') {
-        window.location.href = '/login'
+        setTimeout(() => {
+          window.location.href = '/login'
+        }, 100)
       }
     }
 

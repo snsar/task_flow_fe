@@ -9,14 +9,16 @@ export const useTaskStore = defineStore('task', () => {
   const error = ref(null)
 
   // Computed properties for filtered tasks
-  const todoTasks = computed(() => tasks.value.filter(task => task.status === 'todo'))
-  const inProgressTasks = computed(() => tasks.value.filter(task => task.status === 'in_progress'))
-  const completedTasks = computed(() => tasks.value.filter(task => task.status === 'completed'))
+  const todoTasks = computed(() => tasks.value.filter((task) => task.status === 'todo'))
+  const inProgressTasks = computed(() =>
+    tasks.value.filter((task) => task.status === 'in_progress'),
+  )
+  const completedTasks = computed(() => tasks.value.filter((task) => task.status === 'completed'))
 
   // Group tasks by project
   const tasksByProject = computed(() => {
     const grouped = {}
-    tasks.value.forEach(task => {
+    tasks.value.forEach((task) => {
       if (!grouped[task.project_id]) {
         grouped[task.project_id] = []
       }
@@ -41,11 +43,17 @@ export const useTaskStore = defineStore('task', () => {
   const fetchTask = async (id) => {
     loading.value = true
     error.value = null
+    currentTask.value = null // Reset current task before fetching
+
     try {
       currentTask.value = await taskService.getTask(id)
+      if (!currentTask.value) {
+        error.value = `Không tìm thấy công việc với ID ${id}`
+      }
     } catch (err) {
       error.value = err.response?.data?.message || `Không thể lấy thông tin công việc ${id}`
       console.error(`Error fetching task ${id}:`, err)
+      throw err // Re-throw to allow component to handle the error
     } finally {
       loading.value = false
     }
@@ -72,18 +80,18 @@ export const useTaskStore = defineStore('task', () => {
     error.value = null
     try {
       const updatedTask = await taskService.updateTask(id, taskData)
-      
+
       // Update in tasks array
-      const index = tasks.value.findIndex(t => t.id === id)
+      const index = tasks.value.findIndex((t) => t.id === id)
       if (index !== -1) {
         tasks.value[index] = updatedTask
       }
-      
+
       // Update current task if it's the same
       if (currentTask.value?.id === id) {
         currentTask.value = updatedTask
       }
-      
+
       return updatedTask
     } catch (err) {
       error.value = err.response?.data?.message || `Không thể cập nhật công việc ${id}`
@@ -99,18 +107,18 @@ export const useTaskStore = defineStore('task', () => {
     error.value = null
     try {
       const updatedTask = await taskService.updateTaskStatus(id, status)
-      
+
       // Update in tasks array
-      const index = tasks.value.findIndex(t => t.id === id)
+      const index = tasks.value.findIndex((t) => t.id === id)
       if (index !== -1) {
         tasks.value[index] = updatedTask
       }
-      
+
       // Update current task if it's the same
       if (currentTask.value?.id === id) {
         currentTask.value = updatedTask
       }
-      
+
       return updatedTask
     } catch (err) {
       error.value = err.response?.data?.message || `Không thể cập nhật trạng thái công việc ${id}`
@@ -126,15 +134,15 @@ export const useTaskStore = defineStore('task', () => {
     error.value = null
     try {
       await taskService.deleteTask(id)
-      
+
       // Remove from tasks array
-      tasks.value = tasks.value.filter(t => t.id !== id)
-      
+      tasks.value = tasks.value.filter((t) => t.id !== id)
+
       // Clear current task if it's the same
       if (currentTask.value?.id === id) {
         currentTask.value = null
       }
-      
+
       return true
     } catch (err) {
       error.value = err.response?.data?.message || `Không thể xóa công việc ${id}`
@@ -159,6 +167,6 @@ export const useTaskStore = defineStore('task', () => {
     createTask,
     updateTask,
     updateTaskStatus,
-    deleteTask
+    deleteTask,
   }
 })
