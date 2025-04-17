@@ -1,13 +1,19 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { login, register, logout, getCurrentUser } from '@/services/authService'
+import { apiClient } from '@/services/api'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
   const loading = ref(false)
   const error = ref(null)
 
-  const isAuthenticated = computed(() => !!localStorage.getItem('token'))
+  // Check if user is authenticated by verifying token exists in localStorage
+  const isAuthenticated = computed(() => {
+    const hasToken = !!localStorage.getItem('token')
+    console.log('Authentication status checked:', hasToken)
+    return hasToken
+  })
   const isAdmin = computed(() => user.value?.roles?.some((role) => role.slug === 'admin') || false)
   const isManager = computed(
     () => user.value?.roles?.some((role) => role.slug === 'project-manager') || false,
@@ -47,17 +53,27 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true
     error.value = null
     try {
+      // Call the logout API endpoint
       await logout()
-      user.value = null
-      // Make sure we clear any cached state
-      localStorage.removeItem('token')
-      delete apiClient.defaults.headers.common['Authorization']
+      console.log('Logout successful')
     } catch (err) {
+      // Log the error but continue with local logout
       error.value = err.response?.data?.message || 'Đăng xuất thất bại'
       console.error('Logout error:', err)
     } finally {
+      // Always clear local state regardless of API success
+      user.value = null
+      localStorage.removeItem('token')
+
+      // Clear the Authorization header
+      if (apiClient?.defaults?.headers?.common) {
+        delete apiClient.defaults.headers.common['Authorization']
+      }
+
       loading.value = false
     }
+
+    return true // Always return success for UI flow
   }
 
   const fetchCurrentUser = async () => {

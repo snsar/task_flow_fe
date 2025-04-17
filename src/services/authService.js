@@ -39,23 +39,32 @@ export const register = async (userData) => {
 }
 
 export const logout = async () => {
-  try {
-    // Đảm bảo gửi token trong header để xác thực
-    const token = localStorage.getItem('token')
-    if (token) {
-      await apiClient.post('/auth/logout')
-    }
-  } catch (error) {
-    console.error('Logout error:', error)
-  } finally {
-    // Đảm bảo luôn xóa token khỏi localStorage
-    localStorage.removeItem('token')
-    // Remove the Authorization header
-    delete apiClient.defaults.headers.common['Authorization']
+  const token = localStorage.getItem('token')
+
+  // If no token exists, just return (already logged out)
+  if (!token) {
+    console.log('No token found, user is already logged out')
+    return Promise.resolve()
   }
 
-  // Return a resolved promise to ensure the chain continues
-  return Promise.resolve()
+  try {
+    // Ensure the token is in the headers for this specific request
+    const response = await apiClient.post(
+      '/auth/logout',
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    )
+    console.log('Logout API response:', response.data)
+    return response.data
+  } catch (error) {
+    console.error('Logout API error:', error.response?.data || error.message)
+    // Even if the API call fails, we still want to clear the local token
+    throw error
+  }
 }
 
 export const refreshToken = async () => {

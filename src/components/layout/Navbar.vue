@@ -1,8 +1,7 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationStore } from '@/stores/notificationStore'
-import { apiClient } from '@/services/api'
 const authStore = useAuthStore()
 const notificationStore = useNotificationStore()
 
@@ -17,11 +16,29 @@ const userAvatar = computed(
     'https://ui-avatars.com/api/?name=' + encodeURIComponent(userName.value),
 )
 
+// Reference to the user menu dropdown
+const userMenuRef = ref(null)
+
+// Handle clicks outside the user menu
+const handleClickOutside = (event) => {
+  if (userMenuRef.value && !userMenuRef.value.contains(event.target) && showUserMenu.value) {
+    showUserMenu.value = false
+  }
+}
+
 onMounted(async () => {
   if (authStore.isAuthenticated) {
     await authStore.fetchCurrentUser()
     await notificationStore.fetchNotifications()
   }
+
+  // Add click outside listener
+  document.addEventListener('click', handleClickOutside)
+})
+
+onBeforeUnmount(() => {
+  // Remove click outside listener
+  document.removeEventListener('click', handleClickOutside)
 })
 
 const toggleNotifications = async () => {
@@ -35,19 +52,46 @@ const toggleUserMenu = () => {
   showUserMenu.value = !showUserMenu.value
 }
 
-const handleLogout = () => {
-  // First clear the token directly
+// Force logout function that bypasses the API call
+const forceLogout = () => {
+  console.log('Force logout executed')
   localStorage.removeItem('token')
-  delete apiClient.defaults.headers.common['Authorization']
-
-  // Reset user state
   authStore.user = null
-
-  // Close the user menu
-  showUserMenu.value = false
-
-  // Force navigation to login page
   window.location.href = '/login'
+}
+
+const handleLogout = async () => {
+  console.log('Logout button clicked')
+  try {
+    // Close the user menu first for better UX
+    showUserMenu.value = false
+
+    // First clear local storage directly to ensure immediate logout
+    localStorage.removeItem('token')
+    console.log('Token removed from localStorage')
+
+    // Then try to call the API to invalidate the token on the server
+    try {
+      await authStore.logoutUser()
+      console.log('Server-side logout successful')
+    } catch (apiError) {
+      console.error('Server-side logout failed, but continuing with client-side logout:', apiError)
+    }
+
+    // Reset all state
+    authStore.user = null
+    console.log('User state reset')
+
+    // Force a hard redirect to the login page
+    console.log('Redirecting to login page')
+    setTimeout(() => {
+      window.location.href = '/login'
+    }, 100) // Small delay to ensure UI updates
+  } catch (error) {
+    console.error('Critical error during logout process:', error)
+    // Force logout anyway
+    forceLogout()
+  }
 }
 
 const markAllAsRead = async () => {
@@ -169,7 +213,7 @@ const deleteNotification = async (id) => {
           </ul>
         </div>
       </div>
-      <div v-if="authStore.isAuthenticated" class="dropdown dropdown-end">
+      <div v-if="authStore.isAuthenticated" class="dropdown dropdown-end" ref="userMenuRef">
         <button @click="toggleUserMenu" class="btn btn-ghost btn-circle avatar">
           <div class="w-10 rounded-full">
             <img :src="userAvatar" alt="User avatar" />
@@ -177,7 +221,7 @@ const deleteNotification = async (id) => {
         </button>
         <ul
           v-if="showUserMenu"
-          class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52 mt-4"
+          class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52 mt-4 absolute right-0"
         >
           <li class="p-2 text-center border-b">
             <span class="font-bold">{{ userName }}</span>
@@ -187,7 +231,22 @@ const deleteNotification = async (id) => {
           <li><router-link to="/projects">Dự án</router-link></li>
           <li><router-link to="/tasks">Công việc</router-link></li>
           <li v-if="authStore.isAdmin"><router-link to="/admin">Quản trị</router-link></li>
-          <li><a @click="handleLogout">Đăng xuất</a></li>
+          <li>
+            <button
+              class="btn btn-ghost w-full text-left justify-start"
+              @click.prevent="handleLogout"
+            >
+              Đăng xuất
+            </button>
+          </li>
+          <li>
+            <button
+              class="btn btn-error btn-sm w-full text-left justify-start"
+              @click.prevent="forceLogout"
+            >
+              Force Logout
+            </button>
+          </li>
         </ul>
       </div>
       <div v-else class="flex gap-2">
