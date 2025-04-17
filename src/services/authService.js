@@ -3,13 +3,11 @@ import { apiClient } from './api'
 export const login = async (credentials) => {
   try {
     const response = await apiClient.post('/auth/login', credentials)
-    console.log('Login response:', response.data)
-    // Lưu token vào localStorage hoặc sessionStorage
+    // Lưu token vào localStorage
     localStorage.setItem('token', response.data.token)
-
     return response.data
   } catch (error) {
-    console.error('Login error:', error)
+    console.error('Login error:', error.response?.data || error.message)
     throw error
   }
 }
@@ -17,13 +15,11 @@ export const login = async (credentials) => {
 export const register = async (userData) => {
   try {
     const response = await apiClient.post('/auth/register', userData)
-    console.log('Register response:', response.data)
-    // Lưu token vào localStorage hoặc sessionStorage
+    // Lưu token vào localStorage
     localStorage.setItem('token', response.data.token)
-
     return response.data
   } catch (error) {
-    console.error('Register error:', error)
+    console.error('Register error:', error.response?.data || error.message)
     throw error
   }
 }
@@ -49,14 +45,12 @@ export const logout = async () => {
 export const refreshToken = async () => {
   try {
     const response = await apiClient.post('/auth/refresh-token')
-    console.log('Token refresh response:', response.data)
     // Cập nhật token mới vào localStorage
     localStorage.setItem('token', response.data.token)
-
     return response.data
   } catch (error) {
-    console.error('Token refresh error:', error)
-    // Nếu không thể làm mới token, có thể đăng xuất người dùng
+    console.error('Token refresh error:', error.response?.data || error.message)
+    // Nếu không thể làm mới token, đăng xuất người dùng
     localStorage.removeItem('token')
     throw error
   }
