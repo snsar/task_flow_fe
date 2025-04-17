@@ -4,7 +4,14 @@ export const login = async (credentials) => {
   try {
     const response = await apiClient.post('/auth/login', credentials)
     // Lưu token vào localStorage
-    localStorage.setItem('token', response.data.token)
+    if (response.data && response.data.token) {
+      localStorage.setItem('token', response.data.token)
+      // Set the token in the API client for immediate use
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`
+    } else {
+      console.error('Login response missing token')
+      throw new Error('Authentication failed: No token received')
+    }
     return response.data
   } catch (error) {
     console.error('Login error:', error.response?.data || error.message)
@@ -16,7 +23,14 @@ export const register = async (userData) => {
   try {
     const response = await apiClient.post('/auth/register', userData)
     // Lưu token vào localStorage
-    localStorage.setItem('token', response.data.token)
+    if (response.data && response.data.token) {
+      localStorage.setItem('token', response.data.token)
+      // Set the token in the API client for immediate use
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`
+    } else {
+      console.error('Register response missing token')
+      throw new Error('Registration failed: No token received')
+    }
     return response.data
   } catch (error) {
     console.error('Register error:', error.response?.data || error.message)
@@ -28,17 +42,13 @@ export const logout = async () => {
   try {
     // Đảm bảo gửi token trong header để xác thực
     await apiClient.post('/auth/logout')
-    // Xóa token khỏi localStorage hoặc sessionStorage
-    localStorage.removeItem('token')
-    // Có thể xóa thêm các thông tin người dùng khác nếu có
   } catch (error) {
     console.error('Logout error:', error)
-    // Xóa token ngay cả khi API gọi thất bại
-    localStorage.removeItem('token')
-    throw error
   } finally {
     // Đảm bảo luôn xóa token khỏi localStorage
     localStorage.removeItem('token')
+    // Remove the Authorization header
+    delete apiClient.defaults.headers.common['Authorization']
   }
 }
 
@@ -68,5 +78,13 @@ export const getCurrentUser = async () => {
 
 // Kiểm tra xem người dùng đã đăng nhập chưa
 export const isAuthenticated = () => {
-  return !!localStorage.getItem('token')
+  const token = localStorage.getItem('token')
+  if (!token) return false
+
+  // Ensure the token is set in the API client
+  if (token && !apiClient.defaults.headers.common['Authorization']) {
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`
+  }
+
+  return true
 }

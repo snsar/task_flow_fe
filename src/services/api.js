@@ -28,6 +28,19 @@ apiClient.interceptors.response.use(
   (error) => {
     // Log the error for debugging
     console.error('API Error:', error.response?.data || error.message)
+
+    // Handle authentication errors
+    if (error.response && error.response.status === 401) {
+      console.error('Authentication error - clearing token')
+      localStorage.removeItem('token')
+      delete apiClient.defaults.headers.common['Authorization']
+
+      // Redirect to login page if we're in a browser environment
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login'
+      }
+    }
+
     return Promise.reject(error)
   },
 )
